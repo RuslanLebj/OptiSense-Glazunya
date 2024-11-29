@@ -1,0 +1,18 @@
+services:
+
+  glazunya:
+    container_name: glazunya-app
+    ports:
+      - "8000:8000"
+    build:
+      dockerfile: ./docker/app/Dockerfile
+      context: ../
+    command: >
+      gunicorn src.app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --reload
+    volumes:
+      - ../:/opt/app
+    restart: on-failure
+    env_file:
+      - app/.env
+    environment:
+      - PYTHONUNBUFFERED=1
