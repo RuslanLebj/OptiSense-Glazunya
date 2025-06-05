@@ -27,9 +27,11 @@ services:
     build:
       dockerfile: ./docker/app/Dockerfile
       context: ../
-    command: taskiq worker app.modules.stream.infrastructure.broker:stream_broker app.modules.stream.tasks.sync_tasks --workers 1
+    command: taskiq worker src.app.modules.stream.infrastructure.broker:stream_broker src.app.modules.stream.application.tasks.stream_tasks --workers 1
     volumes:
       - ../:/opt/app
     restart: on-failure
     depends_on:
       - glazunya-redis
+    env_file:
+      - app/template.env

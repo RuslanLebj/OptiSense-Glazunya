@@ -1,5 +1,5 @@
 import os
-
+from typing import ClassVar
 from pydantic_settings import BaseSettings
 
 
@@ -20,9 +20,7 @@ class Settings(BaseSettings):
     QUEUE_NAME: str = "stream_processing_task"
 
     # YOLO model
-    MODEL_PATH = (
-        BASE_DIR + "/artifacts/models/yolo11n_int8_openvino_model/yolo11n.xml",
-    )
+    MODEL_PATH: ClassVar[str] = '/opt/app/src/app/artifacts/models/yolo11n_int8_openvino_model/yolo11n.xml'
 
     class Config:
         env_file = ".env"  # Можно оставить, если хотите использовать .env в локальной разработке, но не обязательно для Docker

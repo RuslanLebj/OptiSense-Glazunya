@@ -1,5 +1,15 @@
 FROM python:3.12-slim
 
+# Устанавливаем системные библиотеки, необходимые для работы OpenCV (cv2)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+        libsm6 \
+        libxext6 \
+        libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml poetry.lock /opt/app/
 
 WORKDIR /opt/app
@@ -14,4 +24,4 @@ RUN poetry config virtualenvs.create false
 RUN poetry install
 
 VOLUME ["/opt/app"]
-EXPOSE 8000
+EXPOSE 8100

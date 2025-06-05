@@ -1,1 +1,1 @@
-from queue_length_service import *
+from .queue_length_service import *
