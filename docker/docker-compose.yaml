@@ -3,16 +3,33 @@ services:
   glazunya:
     container_name: glazunya-app
     ports:
-      - "8000:8000"
+      - "8100:8100"
     build:
       dockerfile: ./docker/app/Dockerfile
       context: ../
     command: >
-      gunicorn src.app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --reload
+      gunicorn src.app.api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8100 --reload
     volumes:
       - ../:/opt/app
     restart: on-failure
     env_file:
-      - app/.env
+      - app/template.env
     environment:
       - PYTHONUNBUFFERED=1
+
+  glazunya-redis:
+    image: redis:7.4.1-alpine
+    restart: on-failure
+    ports:
+      - "6379:6379"
+
+  glazunya-taskiq-worker:
+    build:
+      dockerfile: ./docker/app/Dockerfile
+      context: ../
+    command: taskiq worker app.modules.stream.infrastructure.broker:stream_broker app.modules.stream.tasks.sync_tasks --workers 1
+    volumes:
+      - ../:/opt/app
+    restart: on-failure
+    depends_on:
+      - glazunya-redis

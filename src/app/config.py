@@ -1,8 +1,28 @@
+import os
+
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
-    app_name: str = "Glazunya App"
-    api_version: str = "1.0.0"
+    APP_NAME: str = "Glazunya App"
+    API_VERSION: str = "1.0.0"
+    BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+
+    # OptiSense API credentials
+    OPTISENSE_API_URL: str
+    OPTISENSE_API_KEY: str
+
+    # Redis credentials
+    REDIS_URL: str
+    REDIS_POOL_MAX_SIZE: int = 15
+
+    # Queue params
+    QUEUE_NAME: str = "stream_processing_task"
+
+    # YOLO model
+    MODEL_PATH = (
+        BASE_DIR + "/artifacts/models/yolo11n_int8_openvino_model/yolo11n.xml",
+    )
 
     class Config:
         env_file = ".env"  # Можно оставить, если хотите использовать .env в локальной разработке, но не обязательно для Docker
