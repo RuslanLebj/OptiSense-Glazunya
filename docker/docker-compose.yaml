@@ -8,7 +8,7 @@ services:
       dockerfile: ./docker/app/Dockerfile
       context: ../
     command: >
-      gunicorn src.app.api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8100 --reload
+      gunicorn app.api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8100 --reload
     volumes:
       - ../:/opt/app
     restart: on-failure
@@ -16,18 +16,24 @@ services:
       - app/template.env
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - optinet
 
   glazunya-redis:
+    container_name: glazunya-redis
     image: redis:7.4.1-alpine
     restart: on-failure
     ports:
       - "6379:6379"
+    networks:
+      - optinet
 
   glazunya-taskiq-worker:
+    container_name: glazunya-taskiq-worker
     build:
       dockerfile: ./docker/app/Dockerfile
       context: ../
-    command: taskiq worker src.app.modules.stream.infrastructure.broker:stream_broker src.app.modules.stream.application.tasks.stream_tasks --workers 1
+    command: taskiq worker app.modules.stream.infrastructure.broker:stream_broker app.modules.stream.application.tasks --workers 1
     volumes:
       - ../:/opt/app
     restart: on-failure
@@ -35,3 +41,26 @@ services:
       - glazunya-redis
     env_file:
       - app/template.env
+    networks:
+      - optinet
+
+  glazunya-taskiq-scheduler:
+    build:
+      dockerfile: ./docker/app/Dockerfile
+      context: ..
+    command: taskiq scheduler app.modules.stream.infrastructure.scheduler:scheduler app.modules.stream.application.tasks
+    volumes:
+      - ../:/opt/app
+    restart: on-failure
+    depends_on:
+      - glazunya-redis
+    env_file:
+      - app/template.env
+    networks:
+      - optinet
+
+networks:
+  optinet:
+    name: "optinet-network"
+    external: true
+    driver: bridge

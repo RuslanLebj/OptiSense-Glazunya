@@ -1,6 +1,6 @@
 from datetime import time, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import numpy as np
 
 
@@ -107,8 +107,18 @@ class Camera(BaseModel):
     end_time: time | None = None
     is_active: bool
     indicators_status: IndicatorsStatus
-    indicators_threshold: Indicators
     roi_polygons: ROIPolygons
+
+    @field_validator("roi_polygons", mode="before")
+    def _build_roi_polygons(cls, v):
+        if isinstance(v, list):
+            polygons: list[Polygon] = []
+            for idx, poly_pts in enumerate(v, start=1):
+                pts = [Point(**pt) for pt in poly_pts]
+                polygons.append(Polygon(id=idx, points=pts))
+            return ROIPolygons(polygons=polygons)
+
+        return v
 
 
 class Record(BaseModel):

@@ -33,6 +33,8 @@ class OptisenseAPIAdapter(AbstractAPIAdapter):
         """
         Получить список камер.
         """
+        print(">>> URL:", f"{self._url}/cameras/")
+        print(">>> Headers:", self._headers)
         async with aiohttp.ClientSession(headers=self._headers) as session:
             async with session.get(f"{self._url}/cameras/") as resp:
                 resp.raise_for_status()

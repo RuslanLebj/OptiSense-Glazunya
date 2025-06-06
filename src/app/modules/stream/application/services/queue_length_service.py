@@ -49,7 +49,8 @@ class QueueLengthService:
         try:
             self.logger.info("Start processing camera %s", self._camera.name)
             next_tick = time.perf_counter()
-            while True:
+
+            while cap.isOpened():
                 now_local = datetime.now(self.TIMEZONE).time()
                 if self._camera.end_time and now_local >= self._camera.end_time:
                     self.logger.info(
@@ -65,7 +66,7 @@ class QueueLengthService:
                     await asyncio.sleep(1.0)
                     continue
 
-                queue_length = await self._pipeline.process_async(frame)
+                queue_length = self._pipeline.process(frame)
                 record = Record(
                     camera=self._camera.id,
                     record_time=datetime.now(tz=self.TIMEZONE),

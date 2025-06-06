@@ -1,6 +1,5 @@
 from app.modules.stream.infrastructure.broker import stream_broker
 from app.modules.stream.application.schemas import Camera
-from app.modules.stream.infrastructure.optisense_api.adapter import OptisenseAPIAdapter
 from app.config import settings
 from app.modules.stream.api.deps import (
     get_optisense_api_adapter,
@@ -13,10 +12,7 @@ tasks_logger = get_logger("tasks")
 
 
 @stream_broker.task(
-    schedule=[{
-        "cron": "0 0 * * *",
-        "timezone": "Asia/Yekaterinburg",
-    }],
+    schedule=[{"cron": "0 0 * * *"}],
     queue_name=settings.QUEUE_NAME,
     task_name="start_processing_stream",
 )
