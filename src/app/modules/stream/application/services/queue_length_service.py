@@ -1,12 +1,13 @@
 from typing import Final
 from zoneinfo import ZoneInfo
 
-import cv2, asyncio, time
+import asyncio, time
 from datetime import datetime, timedelta
 
 from app.modules.stream.application.pipelines import QueueLengthPipeline
 from app.modules.stream.application.schemas import Camera, Record, Indicators
 from app.modules.stream.infrastructure.optisense_api.adapter import OptisenseAPIAdapter
+from app.modules.stream.infrastructure.stream.adapter import StreamAdapter
 from utils.logger import get_logger
 
 
@@ -25,6 +26,7 @@ class QueueLengthService:
         self._api_adapter = api_adapter
         self._camera = camera
         self.logger = get_logger("QueueLengthPipeline")
+        self._stream_adapter = StreamAdapter(self._camera.url_address)
 
     async def run(self) -> None:
 
@@ -33,11 +35,7 @@ class QueueLengthService:
 
         await self._wait_until_start()
 
-        cap = cv2.VideoCapture(self._camera.url_address, cv2.CAP_FFMPEG)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-        if not cap.isOpened():
-            raise RuntimeError(f"Camera {self._camera.name} not opened")
+        self._stream_adapter.start()
 
         self.logger.info(
             "Start processing camera %s (window: %s–%s)",
@@ -50,7 +48,7 @@ class QueueLengthService:
             self.logger.info("Start processing camera %s", self._camera.name)
             next_tick = time.perf_counter()
 
-            while cap.isOpened():
+            while True:
                 now_local = datetime.now(self.TIMEZONE).time()
                 if self._camera.end_time and now_local >= self._camera.end_time:
                     self.logger.info(
@@ -60,10 +58,10 @@ class QueueLengthService:
                     )
                     break
 
-                ok, frame = cap.read()
+                ok, frame = self._stream_adapter.read()
                 if not ok:
                     next_tick = time.perf_counter()
-                    await asyncio.sleep(1.0)
+                    await asyncio.sleep(self.PERIOD)
                     continue
 
                 queue_length = self._pipeline.process(frame)
@@ -89,7 +87,7 @@ class QueueLengthService:
             )
             raise
         finally:
-            cap.release()
+            self._stream_adapter.stop()
             self.logger.info("Stop processing camera %s", self._camera.name)
 
     async def _wait_until_start(self) -> None:
