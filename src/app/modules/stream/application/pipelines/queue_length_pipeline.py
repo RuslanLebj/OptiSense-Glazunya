@@ -1,5 +1,6 @@
 from typing import Final
 import asyncio
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -251,22 +252,36 @@ class QueueLengthPipeline:
         roi_mask = np.array([self._inside_roi(x, y) for x, y in zip(cx, cy)])
         return boxes[roi_mask], scores[roi_mask]
 
+
     def _draw_boxes(self, frame: np.ndarray, boxes: np.ndarray) -> np.ndarray:
         """
-        Копирует frame, рисует на нём ROI и все боксы, возвращает результат.
+        Копирует frame, рисует на нём ROI, все боксы и накладывает таймштамп слева сверху.
         """
         frame_vis = frame.copy()
 
         # Рисуем ROI (если задана)
         if self.roi is not None:
             pts = self.roi.reshape((-1, 1, 2))
-            cv2.polylines(
-                frame_vis, [pts], isClosed=True, color=(0, 0, 255), thickness=2
-            )
+            cv2.polylines(frame_vis, [pts], isClosed=True, color=(0, 0, 255), thickness=2)
 
         # Рисуем боксы (людей)
         for x1, y1, x2, y2 in boxes.astype(int):
             cv2.rectangle(frame_vis, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
+
+        # Рисуем таймштамп
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        (w, h), _ = cv2.getTextSize(ts, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+        cv2.rectangle(frame_vis, (0, 0), (w + 10, h + 10), (0, 0, 0), thickness=-1)
+        cv2.putText(
+            frame_vis,
+            ts,
+            (5, h + 5),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            thickness=1,
+            lineType=cv2.LINE_AA,
+        )
 
         return frame_vis
 
