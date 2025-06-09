@@ -33,6 +33,7 @@ class QueueLengthPipeline:
         self.conf_threshold = conf_threshold
         self.input_size = input_size
         self.roi = roi
+        self.last_vis_frame: np.ndarray | None = None
 
         # Создаём runtime и компилируем модель
         self.core: ov.Core = ov.Core()
@@ -180,9 +181,10 @@ class QueueLengthPipeline:
             return True
         return cv2.pointPolygonTest(self.roi, (x, y), False) > 0
 
-
     def _on_complete(
-        self, req: ov.InferRequest, userdata: tuple[asyncio.Future[int], float, int, int]
+        self,
+        req: ov.InferRequest,
+        userdata: tuple[asyncio.Future[int], float, int, int],
     ) -> None:
         fut, sc, pt, pl = userdata
         raw = req.get_output_tensor(self.out.index).data
@@ -249,13 +251,24 @@ class QueueLengthPipeline:
         roi_mask = np.array([self._inside_roi(x, y) for x, y in zip(cx, cy)])
         return boxes[roi_mask], scores[roi_mask]
 
-    def _on_complete(
-        self, req: ov.InferRequest, userdata: tuple[asyncio.Future[int], float, int, int]
-    ) -> None:
-        fut, sc, pt, pl = userdata
-        raw = req.get_output_tensor(self.out.index).data
-        boxes, _ = self.postprocess(raw, sc, pt, pl)
-        asyncio.get_event_loop().call_soon_threadsafe(fut.set_result, len(boxes))
+    def _draw_boxes(self, frame: np.ndarray, boxes: np.ndarray) -> np.ndarray:
+        """
+        Копирует frame, рисует на нём ROI и все боксы, возвращает результат.
+        """
+        frame_vis = frame.copy()
+
+        # Рисуем ROI (если задана)
+        if self.roi is not None:
+            pts = self.roi.reshape((-1, 1, 2))
+            cv2.polylines(
+                frame_vis, [pts], isClosed=True, color=(0, 0, 255), thickness=2
+            )
+
+        # Рисуем боксы (людей)
+        for x1, y1, x2, y2 in boxes.astype(int):
+            cv2.rectangle(frame_vis, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
+
+        return frame_vis
 
     async def process_async(self, frame: np.ndarray) -> int:
         """
@@ -267,11 +280,12 @@ class QueueLengthPipeline:
         self.queue.start_async({self.inp: img}, userdata=(fut, sc, pt, pl))
         return await fut
 
-    def process(self, frame: np.ndarray) -> int:
+    def process(self, frame: np.ndarray) -> tuple[int, np.ndarray]:
         """
-        Обрабатывает кадр и возвращает количество людей в зоне интереса (очереди).
+        Обрабатывает кадр и возвращает количество людей в зоне интереса (очереди) и обработанный кадр.
         """
         img, sc, pt, pl = self.preprocess(frame)
         raw = self.compiled({self.inp: img})[self.out]
         boxes, _ = self.postprocess(raw, sc, pt, pl)
-        return len(boxes)
+        vis_frame = self._draw_boxes(frame, boxes)
+        return len(boxes), vis_frame

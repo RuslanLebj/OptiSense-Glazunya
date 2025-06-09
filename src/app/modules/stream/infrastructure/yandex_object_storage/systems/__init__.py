@@ -1,0 +1,1 @@
+from .record_photos import YS3RecordPhotosSystem

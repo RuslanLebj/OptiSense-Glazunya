@@ -127,3 +127,4 @@ class Record(BaseModel):
     indicators_value: Indicators = Field(
         ..., description="Значения рассчитанных показателей"
     )
+    frame: str = Field(..., description="Ссылка на обработанный кадр")

@@ -8,6 +8,7 @@ from app.modules.stream.application.pipelines import QueueLengthPipeline
 from app.modules.stream.application.schemas import Camera, Record, Indicators
 from app.modules.stream.infrastructure.optisense_api.adapter import OptisenseAPIAdapter
 from app.modules.stream.infrastructure.stream.adapter import StreamAdapter
+from app.modules.stream.infrastructure.yandex_object_storage.systems import YS3RecordPhotosSystem
 from utils.logger import get_logger
 
 
@@ -20,10 +21,12 @@ class QueueLengthService:
         self,
         pipeline: QueueLengthPipeline,
         api_adapter: OptisenseAPIAdapter,
+        photo_storage: YS3RecordPhotosSystem,
         camera: Camera,
     ):
         self._pipeline = pipeline
         self._api_adapter = api_adapter
+        self._photo_storage = photo_storage
         self._camera = camera
         self.logger = get_logger("QueueLengthPipeline")
         self._stream_adapter = StreamAdapter(self._camera.url_address)
@@ -64,11 +67,25 @@ class QueueLengthService:
                     await asyncio.sleep(self.PERIOD)
                     continue
 
-                queue_length = self._pipeline.process(frame)
+                queue_length, vis_frame = self._pipeline.process(frame)
+                now = datetime.now(tz=self.TIMEZONE)
+
+                try:
+                    url = self._photo_storage.upload_frame(
+                        camera_id=str(self._camera.id),
+                        vis_frame=vis_frame,
+                        timestamp=now,
+                    )
+                    self.logger.debug("Vis frame uploaded to S3: %s", url)
+                except Exception as err:
+                    url = ""
+                    self.logger.error("Failed to upload vis frame to S3: %s", err)
+
                 record = Record(
                     camera=self._camera.id,
-                    record_time=datetime.now(tz=self.TIMEZONE),
+                    record_time=now,
                     indicators_value=Indicators(queue_length=queue_length),
+                    frame=url,
                 )
 
                 asyncio.create_task(self._api_adapter.create_record(record))
