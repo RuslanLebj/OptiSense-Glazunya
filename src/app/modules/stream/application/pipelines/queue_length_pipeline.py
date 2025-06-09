@@ -5,6 +5,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 import openvino as ov
+from zoneinfo import ZoneInfo
 
 
 class QueueLengthPipeline:
@@ -14,6 +15,7 @@ class QueueLengthPipeline:
 
     PERSON_CLASS: Final[int] = 0
     DEVICE: Final[str] = "CPU"
+    TIMEZONE = ZoneInfo("Asia/Yekaterinburg")
 
     def __init__(
         self,
@@ -269,7 +271,7 @@ class QueueLengthPipeline:
             cv2.rectangle(frame_vis, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
 
         # Рисуем таймштамп
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ts = datetime.now(tz=self.TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
         (w, h), _ = cv2.getTextSize(ts, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
         cv2.rectangle(frame_vis, (0, 0), (w + 10, h + 10), (0, 0, 0), thickness=-1)
         cv2.putText(
