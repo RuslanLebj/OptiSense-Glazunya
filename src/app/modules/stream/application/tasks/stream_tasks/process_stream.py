@@ -13,7 +13,7 @@ tasks_logger = get_logger("tasks")
 
 
 @stream_broker.task(
-    schedule=[{"cron": "0 5 * * *"}],
+    schedule=[{"cron": "0 0 * * *"}],
     queue_name=settings.QUEUE_NAME,
     task_name="start_processing_stream",
 )
